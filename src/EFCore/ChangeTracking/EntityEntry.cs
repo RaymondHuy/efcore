@@ -87,7 +87,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
                 if (value < 0
                     || (int)value > _maxEntityState)
                 {
-                    throw new ArgumentException(CoreStrings.InvalidEnumValue(nameof(value), typeof(EntityState)));
+                    throw new ArgumentException(CoreStrings.InvalidEnumValue(value, nameof(value), typeof(EntityState)));
                 }
 
                 InternalEntry.SetEntityState(value);
@@ -203,10 +203,18 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         ///     navigation properties of this entity.
         /// </summary>
         public virtual IEnumerable<NavigationEntry> Navigations
-            => InternalEntry.EntityType.GetNavigations().Select(
-                navigation => navigation.IsCollection
-                    ? (NavigationEntry)new CollectionEntry(InternalEntry, navigation)
-                    : new ReferenceEntry(InternalEntry, navigation));
+        {
+            get
+            {
+                var entityType = InternalEntry.EntityType;
+                return entityType.GetNavigations()
+                    .Concat<INavigationBase>(entityType.GetSkipNavigations())
+                    .Select(
+                        navigation => navigation.IsCollection
+                            ? (NavigationEntry)new CollectionEntry(InternalEntry, navigation.Name)
+                            : new ReferenceEntry(InternalEntry, navigation.Name));
+            }
+        }
 
         /// <summary>
         ///     Provides access to change tracking information and operations for a given
@@ -273,8 +281,16 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         ///     collection navigation properties of this entity.
         /// </summary>
         public virtual IEnumerable<CollectionEntry> Collections
-            => InternalEntry.EntityType.GetNavigations().Where(n => n.IsCollection)
-                .Select(navigation => new CollectionEntry(InternalEntry, navigation));
+        {
+            get
+            {
+                var entityType = InternalEntry.EntityType;
+                return entityType.GetNavigations()
+                    .Concat<INavigationBase>(entityType.GetSkipNavigations())
+                    .Where(navigation => navigation.IsCollection)
+                    .Select(navigation => new CollectionEntry(InternalEntry, navigation.Name));
+            }
+        }
 
         /// <summary>
         ///     <para>

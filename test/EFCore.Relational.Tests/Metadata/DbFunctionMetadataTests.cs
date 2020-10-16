@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
@@ -807,25 +808,25 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             Assert.Null(dbFunctionBuilder.Metadata.Translation);
 
             Assert.Equal(
-                RelationalStrings.DbFunctionTableValuedCustomTranslation(methodInfo.DisplayName()),
+                RelationalStrings.DbFunctionNonScalarCustomTranslation(methodInfo.DisplayName()),
                 Assert.Throws<InvalidOperationException>(
                     () => dbFunctionBuilder.HasTranslation(args => new SqlFragmentExpression("Empty"))).Message);
 
             var dbFunction = dbFunctionBuilder.Metadata;
 
             Assert.Equal(
-                RelationalStrings.DbFunctionTableValuedCustomTranslation(methodInfo.DisplayName()),
+                RelationalStrings.DbFunctionNonScalarCustomTranslation(methodInfo.DisplayName()),
                 Assert.Throws<InvalidOperationException>(
                     () => ((IConventionDbFunction)dbFunction).SetTranslation(args => new SqlFragmentExpression("Empty"))).Message);
 
             Assert.Equal(
-                RelationalStrings.DbFunctionTableValuedCustomTranslation(methodInfo.DisplayName()),
+                RelationalStrings.DbFunctionNonScalarCustomTranslation(methodInfo.DisplayName()),
                 Assert.Throws<InvalidOperationException>(
                     () => ((IConventionDbFunction)dbFunction)
                         .SetTranslation(args => new SqlFragmentExpression("Empty"), fromDataAnnotation: true)).Message);
 
             Assert.Equal(
-                RelationalStrings.DbFunctionTableValuedCustomTranslation(methodInfo.DisplayName()),
+                RelationalStrings.DbFunctionNonScalarCustomTranslation(methodInfo.DisplayName()),
                 Assert.Throws<InvalidOperationException>(
                     () => dbFunction.Translation = args => new SqlFragmentExpression("Empty")).Message);
         }

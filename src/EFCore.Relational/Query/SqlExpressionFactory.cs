@@ -757,11 +757,6 @@ namespace Microsoft.EntityFrameworkCore.Query
             var sqlExpression = subquery.Projection.Single().Expression;
             var typeMapping = sqlExpression.TypeMapping;
 
-            if (typeMapping == null)
-            {
-                throw new InvalidOperationException(RelationalStrings.NoTypeMappingFoundForSubquery(subquery.Print(), sqlExpression.Type));
-            }
-
             item = ApplyTypeMapping(item, typeMapping);
             return new InExpression(item, subquery, negated, _boolTypeMapping);
         }
@@ -822,7 +817,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             Check.NotNull(sql, nameof(sql));
 
             var tableExpression = new FromSqlExpression(
-                entityType.GetDefaultMappings().SingleOrDefault().Table.Name.Substring(0, 1).ToLower(), sql, sqlArguments);
+                entityType.GetDefaultMappings().SingleOrDefault().Table.Name.Substring(0, 1).ToLowerInvariant(), sql, sqlArguments);
             var selectExpression = new SelectExpression(entityType, tableExpression);
             AddConditions(selectExpression, entityType);
 

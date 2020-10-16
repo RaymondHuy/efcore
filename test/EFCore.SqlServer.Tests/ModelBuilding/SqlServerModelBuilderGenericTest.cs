@@ -93,10 +93,10 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
                 var property1 = modelBuilder.Model.FindEntityType(typeof(DisjointChildSubclass1)).FindProperty("ParentId");
                 Assert.True(property1.IsForeignKey());
-                Assert.Equal("ParentId", property1.GetColumnName());
+                Assert.Equal("ParentId", property1.GetColumnBaseName());
                 var property2 = modelBuilder.Model.FindEntityType(typeof(DisjointChildSubclass2)).FindProperty("ParentId");
                 Assert.True(property2.IsForeignKey());
-                Assert.Equal("DisjointChildSubclass2_ParentId", property2.GetColumnName());
+                Assert.Equal("DisjointChildSubclass2_ParentId", property2.GetColumnBaseName());
             }
 
             [ConditionalFact]
@@ -111,9 +111,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 modelBuilder.FinalizeModel();
 
                 var property1 = modelBuilder.Model.FindEntityType(typeof(DisjointChildSubclass1)).FindProperty(nameof(Child.Name));
-                Assert.Equal(nameof(Child.Name), property1.GetColumnName());
+                Assert.Equal(nameof(Child.Name), property1.GetColumnBaseName());
                 var property2 = modelBuilder.Model.FindEntityType(typeof(DisjointChildSubclass2)).FindProperty(nameof(Child.Name));
-                Assert.Equal(nameof(Child.Name), property2.GetColumnName());
+                Assert.Equal(nameof(Child.Name), property2.GetColumnBaseName());
             }
 
             [ConditionalFact] //Issue#10659
@@ -249,6 +249,68 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
         public class SqlServerGenericOneToOne : GenericOneToOne
         {
+            protected override TestModelBuilder CreateModelBuilder()
+                => CreateTestModelBuilder(SqlServerTestHelpers.Instance);
+        }
+
+        public class SqlServerGenericManyToMany : GenericManyToMany
+        {
+            [ConditionalFact]
+            public virtual void Join_entity_type_uses_same_schema()
+            {
+                var modelBuilder = CreateModelBuilder();
+
+                modelBuilder.Entity<Category>().ToTable("Category", "mySchema").Ignore(c => c.ProductCategories);
+                modelBuilder.Entity<Product>().ToTable("Product", "mySchema");
+                modelBuilder.Entity<CategoryBase>();
+
+                var model = modelBuilder.FinalizeModel();
+
+                var productType = model.FindEntityType(typeof(Product));
+                var categoryType = model.FindEntityType(typeof(Category));
+
+                var categoriesNavigation = productType.GetSkipNavigations().Single();
+                var productsNavigation = categoryType.GetSkipNavigations().Single();
+
+                var categoriesFk = categoriesNavigation.ForeignKey;
+                var productsFk = productsNavigation.ForeignKey;
+                var productCategoryType = categoriesFk.DeclaringEntityType;
+
+                Assert.Equal(typeof(Dictionary<string, object>), productCategoryType.ClrType);
+                Assert.Equal("mySchema", productCategoryType.GetSchema());
+                Assert.Same(categoriesFk, productCategoryType.GetForeignKeys().Last());
+                Assert.Same(productsFk, productCategoryType.GetForeignKeys().First());
+                Assert.Equal(2, productCategoryType.GetForeignKeys().Count());
+            }
+
+            [ConditionalFact]
+            public virtual void Join_entity_type_uses_default_schema_if_related_are_different()
+            {
+                var modelBuilder = CreateModelBuilder();
+
+                modelBuilder.Entity<Category>().ToTable("Category").Ignore(c => c.ProductCategories);
+                modelBuilder.Entity<Product>().ToTable("Product", "dbo");
+                modelBuilder.Entity<CategoryBase>();
+
+                var model = modelBuilder.FinalizeModel();
+
+                var productType = model.FindEntityType(typeof(Product));
+                var categoryType = model.FindEntityType(typeof(Category));
+
+                var categoriesNavigation = productType.GetSkipNavigations().Single();
+                var productsNavigation = categoryType.GetSkipNavigations().Single();
+
+                var categoriesFk = categoriesNavigation.ForeignKey;
+                var productsFk = productsNavigation.ForeignKey;
+                var productCategoryType = categoriesFk.DeclaringEntityType;
+
+                Assert.Equal(typeof(Dictionary<string, object>), productCategoryType.ClrType);
+                Assert.Null(productCategoryType.GetSchema());
+                Assert.Same(categoriesFk, productCategoryType.GetForeignKeys().Last());
+                Assert.Same(productsFk, productCategoryType.GetForeignKeys().First());
+                Assert.Equal(2, productCategoryType.GetForeignKeys().Count());
+            }
+
             protected override TestModelBuilder CreateModelBuilder()
                 => CreateTestModelBuilder(SqlServerTestHelpers.Instance);
         }
@@ -526,7 +588,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 Assert.Single(owned.GetIndexes());
                 Assert.Equal(
                     new[] { nameof(Order.OrderId), nameof(Order.AnotherCustomerId), nameof(Order.CustomerId) },
-                    owned.GetProperties().Select(p => p.GetColumnName()));
+                    owned.GetProperties().Select(p => p.GetColumnBaseName()));
                 Assert.Equal(nameof(Order), owned.GetTableName());
                 Assert.Null(owned.GetSchema());
                 Assert.True(owned.IsMemoryOptimized());

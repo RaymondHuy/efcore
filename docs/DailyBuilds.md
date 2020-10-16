@@ -6,27 +6,71 @@ Daily builds are created automatically whenever a new commit is merged to the `m
 * Serious bugs are usually fixed and available in a new daily build within one or two days--sometimes less. The same fix will likely not make a new preview/release for weeks.
 * You are able to provide feedback immediately on any change we make, which makes it more likely we will be able to take action on this feedback before the change is baked in.
 
-## Using daily builds
+A disadvantage of using daily builds is that there can be significant API churn for new features. However, this should only be an issue if you're trying out new features as they are being developed.
 
-The daily builds are not published to NuGet.org because there are way too many of them! Instead they can be pulled from a custom NuGet feed. To access this feed, create a `NuGet.config` file in the same directory as your .NET solution or projects. The file should contain the following content:
+## Package sources
+
+The daily builds are not published to NuGet.org because the .NET build infrastructure is not set up for this. Instead they can be pulled from a custom NuGet package source. To access this custom source, create a `NuGet.config` file in the same directory as your .NET solution or projects.
+
+There are two different NuGet package sources for daily builds as we transition from EF Core 5.0 to EF Core 6.0.
+
+### Package source for EF Core 5.0
+
+Note that a feature complete release candidate with a go-live license is [available now on NuGet](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/5.0.0-rc.1.20451.13). Daily builds are only needed for early access to the GA bits.
+
+For EF Core 5.0 GA daily builds, `NuGet.config` should contain:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
     <packageSources>
-        <clear />
-        <add key="dotnet-eng" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-eng/nuget/v3/index.json" />
-        <add key="dotnet-tools" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-tools/nuget/v3/index.json" />
-        <add key="dotnet6" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6/nuget/v3/index.json" />
-        <add key="dotnet6-transport" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6-transport/nuget/v3/index.json" />
+        <add key="dotnet5" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet5/nuget/v3/index.json" />
         <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
     </packageSources>
 </configuration>
 ```
 
-## Which version to use
+### Package source for EF Core 6.0
 
-Daily builds are currently branded as EF Core 6.0. For example, `6.0.0-alpha.1.20457.2`. This is an artifact of the build system; these builds still contain the bits what we plan to ship as EF Core 5.0.
+For EF Core 6.0 daily builds, `NuGet.config` should contain:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <packageSources>
+        <add key="dotnet6" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6/nuget/v3/index.json" />
+        <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    </packageSources>
+</configuration>
+```
+
+## Package versions to use
+
+### Using wildcards
+
+The easiest way to use daily builds is with wildcards in project references. For example, for EF Core 6.0 daily builds:
+
+```xml
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.0-*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.0-*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.0-*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite" Version="6.0.0-*" />
+  </ItemGroup>
+```
+
+Or for EF Core 5.0 GA daily builds:
+
+```xml
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="5.0.0-rtm.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="5.0.0-rtm.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="5.0.0-rtm.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite" Version="5.0.0-rtm.*" />
+  </ItemGroup>
+```
+
+Using wildcards will cause NuGet to pull the latest daily build whenever packages are restored.
 
 ### Using an explicit version
 
@@ -38,21 +82,6 @@ Alternately, your IDE might provide auto-completion directly in the .csproj file
 
 ![image](https://user-images.githubusercontent.com/1430078/92645046-1d142900-f299-11ea-9e40-c2b1fe1f61c1.png)
 
-### Using wildcards
-
-It may be more convenient to use wildcards in project references. For example:
-
-```xml
-  <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.0-*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.0-*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.0-*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer.NetTopologySuite" Version="6.0.0-*" />
-  </ItemGroup>
-```
-
-This will cause NuGet to pull the latest daily build whenever packages are restored.
-
 ## What about Visual Studio and the SDK?
 
 EF Core 5.0 targets .NET Standard 2.1. This means that:
@@ -61,3 +90,40 @@ EF Core 5.0 targets .NET Standard 2.1. This means that:
 * The daily builds should work with any IDE that supports .NET Core 3.1.
   * They do not require a Visual Studio preview release, although previews will also work.
 * The daily builds should work with either the .NET Core 3.1 SDK or the .NET 5 SDK installed.
+
+## Troubleshooting
+
+### Missing packages
+
+The config files shown above contain the two NuGet package sources needed for EF Core and its dependencies. However, you may need to add additional package sources for daily builds of other projects, or your own internal packages.
+
+In addition, packages may be missing if the standard `nuget.org` package source has been disabled elsewhere; adding the source in this config will not bring it back. To fix this, either don't disable `nuget.org` anywhere, or tell NuGet to ignore previously disabled sources:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <disabledPackageSources>
+        <clear />
+    </disabledPackageSources>
+    <packageSources>
+        <add key="dotnet6" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6/nuget/v3/index.json" />
+        <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    </packageSources>
+</configuration>
+```
+
+A good way to ensure you're dealing with a completely clean NuGet configuration is to clear both disabled package sources _and_ previously configured package sources. For example:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <disabledPackageSources>
+        <clear />
+    </disabledPackageSources>
+    <packageSources>
+        <clear />
+        <add key="dotnet6" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet6/nuget/v3/index.json" />
+        <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    </packageSources>
+</configuration>
+```

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.SqlServer.Internal;
@@ -394,7 +395,8 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal
                     break;
 
                 default:
-                    throw new InvalidOperationException(SqlServerStrings.UnknownOperatorTypeInSqlUnaryExpression);
+                    throw new InvalidOperationException(RelationalStrings.UnsupportedOperatorForSqlExpression(
+                        sqlUnaryExpression.OperatorType, typeof(SqlUnaryExpression)));
             }
 
             var operand = (SqlExpression)Visit(sqlUnaryExpression.Operand);
@@ -459,8 +461,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal
             _isSearchCondition = parentSearchCondition;
             var newFunction = sqlFunctionExpression.Update(instance, arguments);
 
-            var condition = string.Equals(sqlFunctionExpression.Name, "FREETEXT")
-                || string.Equals(sqlFunctionExpression.Name, "CONTAINS");
+            var condition = sqlFunctionExpression.Name == "FREETEXT" || sqlFunctionExpression.Name == "CONTAINS";
 
             return ApplyConversion(newFunction, condition);
         }

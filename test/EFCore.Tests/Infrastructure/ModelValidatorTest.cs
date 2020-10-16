@@ -321,7 +321,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             modelBuilder.Entity<C>().HasOne<B>().WithOne().HasForeignKey<B>(a => a.Id).HasPrincipalKey<C>(b => b.Id).IsRequired();
 
             VerifyError(
-                CoreStrings.IdentifyingRelationshipCycle(nameof(A)),
+                CoreStrings.IdentifyingRelationshipCycle(nameof(A), "{'Id'}"),
                 modelBuilder.Model);
         }
 
@@ -513,7 +513,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             var entityF = model.AddEntityType(typeof(F));
             SetBaseType(entityF, entityA);
 
-            VerifyError(CoreStrings.InconsistentInheritance(nameof(F), nameof(D)), model);
+            VerifyError(CoreStrings.InconsistentInheritance(nameof(F), nameof(A), nameof(D)), model);
         }
 
         [ConditionalFact]
@@ -706,7 +706,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             ownedTypeBuilder.Ignore(nameof(ReferencedEntity.SampleEntityId), ConfigurationSource.Explicit);
 
             VerifyError(
-                CoreStrings.MultipleOwnerships(nameof(ReferencedEntity)),
+                CoreStrings.MultipleOwnerships(nameof(ReferencedEntity), "'SampleEntity.ReferencedEntity', 'SampleEntity.'"),
                 modelBuilder.Metadata);
         }
 
@@ -1209,6 +1209,37 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                         nameof(SampleEntity.ReferencedEntity),
                         nameof(ReferencedEntity),
                         $"{{'{nameof(ReferencedEntity.SampleEntityId)}'}}"),
+                modelBuilder.Model);
+        }
+
+        [ConditionalTheory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public virtual void Detects_reference_navigations_in_seeds2(bool sensitiveDataLoggingEnabled)
+        {
+            var modelBuilder = CreateConventionalModelBuilder(sensitiveDataLoggingEnabled);
+            modelBuilder.Entity<Order>(
+                e =>
+                {
+                    e.HasMany(o => o.Products)
+                     .WithMany(p => p.Orders);
+                    e.HasData(
+                        new Order { Id = 1, Products = new List<Product> { new Product() } });
+                });
+
+            VerifyError(
+                sensitiveDataLoggingEnabled
+                    ? CoreStrings.SeedDatumNavigationSensitive(
+                        nameof(Order),
+                        $"{nameof(Order.Id)}:1",
+                        nameof(Order.Products),
+                        "OrderProduct (Dictionary<string, object>)",
+                        "{'OrdersId'}")
+                    : CoreStrings.SeedDatumNavigation(
+                        nameof(Order),
+                        nameof(Order.Products),
+                        "OrderProduct (Dictionary<string, object>)",
+                        "{'OrdersId'}"),
                 modelBuilder.Model);
         }
 

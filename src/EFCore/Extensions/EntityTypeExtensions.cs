@@ -634,7 +634,8 @@ namespace Microsoft.EntityFrameworkCore
             var property = entityType.FindProperty(name);
             if (property == null)
             {
-                if (entityType.FindNavigation(name) != null)
+                if (entityType.FindNavigation(name) != null
+                    || entityType.FindSkipNavigation(name) != null)
                 {
                     throw new InvalidOperationException(
                         CoreStrings.PropertyIsNavigation(
@@ -698,13 +699,9 @@ namespace Microsoft.EntityFrameworkCore
         /// </summary>
         /// <param name="entityType"> The entity type. </param>
         /// <returns> The change tracking strategy. </returns>
+        [DebuggerStepThrough]
         public static ChangeTrackingStrategy GetChangeTrackingStrategy([NotNull] this IEntityType entityType)
-        {
-            Check.NotNull(entityType, nameof(entityType));
-
-            return (ChangeTrackingStrategy?)entityType[CoreAnnotationNames.ChangeTrackingStrategy]
-                ?? entityType.Model.GetChangeTrackingStrategy();
-        }
+            => ((EntityType)entityType).GetChangeTrackingStrategy();
 
         /// <summary>
         ///     Gets the data stored in the model for the given entity type.

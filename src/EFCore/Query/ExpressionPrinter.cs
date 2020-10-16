@@ -459,13 +459,22 @@ namespace Microsoft.EntityFrameworkCore.Query
                 && !(value is string))
             {
                 _stringBuilder.Append(value.GetType().ShortDisplayName() + " { ");
+
+                var first = true;
                 foreach (var item in enumerable)
                 {
+                    if (first)
+                    {
+                        first = false;
+                    }
+                    else
+                    {
+                        _stringBuilder.Append(", ");
+                    }
                     Print(item);
-                    _stringBuilder.Append(", ");
                 }
 
-                _stringBuilder.Append("}");
+                _stringBuilder.Append(" }");
                 return;
             }
 
@@ -598,7 +607,8 @@ namespace Microsoft.EntityFrameworkCore.Query
             {
                 for (var i = 0; i < memberInitExpression.Bindings.Count; i++)
                 {
-                    if (memberInitExpression.Bindings[i] is MemberAssignment assignment)
+                    var binding = memberInitExpression.Bindings[i];
+                    if (binding is MemberAssignment assignment)
                     {
                         _stringBuilder.Append(assignment.Member.Name + " = ");
                         Visit(assignment.Expression);
@@ -606,7 +616,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                     }
                     else
                     {
-                        AppendLine(CoreStrings.InvalidMemberInitBinding);
+                        AppendLine(CoreStrings.UnhandledMemberBinding(binding.BindingType));
                     }
                 }
             }

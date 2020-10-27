@@ -37,6 +37,9 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal
         private static readonly MethodInfo _substringMethodInfo
             = typeof(string).GetRuntimeMethod(nameof(string.Substring), new[] { typeof(int), typeof(int) });
 
+        private static readonly MethodInfo _isNullOrEmptyMethodInfo
+            = typeof(string).GetRuntimeMethod(nameof(string.IsNullOrEmpty), new[] { typeof(string) });
+
         private static readonly MethodInfo _isNullOrWhiteSpaceMethodInfo
             = typeof(string).GetRuntimeMethod(nameof(string.IsNullOrWhiteSpace), new[] { typeof(string) });
 
@@ -204,6 +207,17 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal
                     instance.TypeMapping);
             }
 
+            if (_isNullOrEmptyMethodInfo.Equals(method))
+            {
+                var argument = arguments[0];
+
+                return _sqlExpressionFactory.OrElse(
+                    _sqlExpressionFactory.IsNull(argument),
+                    _sqlExpressionFactory.Like(
+                        argument,
+                        _sqlExpressionFactory.Constant(string.Empty)));
+            }
+
             if (_isNullOrWhiteSpaceMethodInfo.Equals(method))
             {
                 var argument = arguments[0];
@@ -211,22 +225,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal
                 return _sqlExpressionFactory.OrElse(
                     _sqlExpressionFactory.IsNull(argument),
                     _sqlExpressionFactory.Equal(
-                        _sqlExpressionFactory.Function(
-                            "LTRIM",
-                            new[]
-                            {
-                                _sqlExpressionFactory.Function(
-                                    "RTRIM",
-                                    new[] { argument },
-                                    nullable: true,
-                                    argumentsPropagateNullability: new[] { true },
-                                    argument.Type,
-                                    argument.TypeMapping)
-                            },
-                            nullable: true,
-                            argumentsPropagateNullability: new[] { true },
-                            argument.Type,
-                            argument.TypeMapping),
+                        argument,
                         _sqlExpressionFactory.Constant(string.Empty, argument.TypeMapping)));
             }
 

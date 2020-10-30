@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
@@ -9,22 +9,15 @@ using Xunit.Abstractions;
 
 namespace Microsoft.EntityFrameworkCore.Query
 {
-    public class NorthwindDbFunctionsQuerySqliteTest : NorthwindDbFunctionsQueryRelationalTestBase<
-        NorthwindQuerySqliteFixture<NoopModelCustomizer>>
+    public class NorthwindDbFunctionsQueryCosmosTest : QueryTestBase<NorthwindQueryCosmosFixture<NoopModelCustomizer>>
     {
-        public NorthwindDbFunctionsQuerySqliteTest(
-            NorthwindQuerySqliteFixture<NoopModelCustomizer> fixture,
+        public NorthwindDbFunctionsQueryCosmosTest(
+            NorthwindQueryCosmosFixture<NoopModelCustomizer> fixture,
             ITestOutputHelper testOutputHelper)
             : base(fixture)
         {
-            Fixture.TestSqlLoggerFactory.Clear();
+            ClearLog();
         }
-
-        protected override string CaseInsensitiveCollation
-            => "NOCASE";
-
-        protected override string CaseSensitiveCollation
-            => "BINARY";
 
         [ConditionalTheory]
         [MemberData(nameof(IsAsyncData))]
@@ -38,9 +31,9 @@ namespace Microsoft.EntityFrameworkCore.Query
                 c => true);
 
             AssertSql(
-                @"SELECT COUNT(*)
-FROM ""Orders"" AS ""o""
-WHERE ef_compare(abs(random() / '9223372036854780000.0'), '1.0') < 0");
+                @"SELECT COUNT(1) AS c
+FROM root c
+WHERE ((c[""Discriminator""] = ""Order"") AND (RAND() < 1.0))");
         }
 
         [ConditionalTheory]
@@ -55,12 +48,15 @@ WHERE ef_compare(abs(random() / '9223372036854780000.0'), '1.0') < 0");
                 c => true);
 
             AssertSql(
-                @"SELECT COUNT(*)
-FROM ""Orders"" AS ""o""
-WHERE ef_compare(abs(random() / '9223372036854780000.0'), '0.0') >= 0");
+                @"SELECT COUNT(1) AS c
+FROM root c
+WHERE ((c[""Discriminator""] = ""Order"") AND (RAND() >= 0.0))");
         }
 
         private void AssertSql(params string[] expected)
             => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
+
+        protected void ClearLog()
+            => Fixture.TestSqlLoggerFactory.Clear();
     }
 }

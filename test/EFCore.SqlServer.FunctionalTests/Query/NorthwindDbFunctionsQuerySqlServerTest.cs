@@ -1149,6 +1149,40 @@ WHERE CAST(DATALENGTH(N'foo') AS int) = 3");
             }
         }
 
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public async Task Random_return_less_than_1(bool async)
+        {
+            await AssertCount(
+                async,
+                ss => ss.Set<Order>(),
+                ss => ss.Set<Order>(),
+                ss => EF.Functions.Random() < 1,
+                c => true);
+
+            AssertSql(
+                @"SELECT COUNT(*)
+FROM [Orders] AS [o]
+WHERE RAND() < 1.0");
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public async Task Random_return_greater_than_0(bool async)
+        {
+            await AssertCount(
+                async,
+                ss => ss.Set<Order>(),
+                ss => ss.Set<Order>(),
+                ss => EF.Functions.Random() >= 0,
+                c => true);
+
+            AssertSql(
+                @"SELECT COUNT(*)
+FROM [Orders] AS [o]
+WHERE RAND() >= 0.0");
+        }
+
         private void AssertSql(params string[] expected)
             => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
     }

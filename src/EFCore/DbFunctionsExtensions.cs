@@ -63,7 +63,21 @@ namespace Microsoft.EntityFrameworkCore
             [CanBeNull] string escapeCharacter)
             => LikeCore(matchExpression, pattern, escapeCharacter);
 
+        /// <summary>
+        ///     <para>
+        ///         An implementation of the SQL RAND operation. On relational databases this is usually directly
+        ///         translated to SQL.
+        ///     </para>
+        /// </summary>
+        /// <param name="_">The DbFunctions instance.</param>
+        /// <returns>a random decimal number between 0 and 1.</returns>
+        public static decimal Random([CanBeNull] this DbFunctions _)
+            => RandomCore();
+
         private static bool LikeCore(string matchExpression, string pattern, string escapeCharacter)
             => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(Like)));
+
+        private static decimal RandomCore()
+            => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(Random)));
     }
 }
